@@ -8,6 +8,17 @@
 * Author: WPKit
 */
 
+// https://github.com/wp-kit/wp-acf-rest-api-blocks/issues/1
+
+// Create replacement for discontinued block.id called block.anchor
+add_filter( 'acf/pre_save_block', function( $attributes ) { 
+	if ( empty( $attributes['anchor'] ) ) { 
+		$attributes['anchor'] = 'acf-block-' . uniqid('', true); 
+	} 
+	return $attributes; 
+} );
+
+
 function wp_acf_rest_api_blocks_init() {
 	
 	if ( ! function_exists( 'use_block_editor_for_post_type' ) ) {
@@ -39,16 +50,18 @@ if( function_exists('acf_register_block_type') ) {
 		foreach($blocks as &$block) {
 			
 			if(strpos($block->blockName, 'acf/') === 0) {
+
+				$identifier = is_null($block->attrs->id) ? $block->attrs->anchor : $block->attrs->id;
 			
-				acf_setup_meta( json_decode(json_encode($block->attrs->data), true), $block->attrs->id, true );
-				
-				$id = $block->attrs->id;
-				
+				acf_setup_meta( json_decode(json_encode($block->attrs->data), true), $identifier, true );
+								
 				unset($block->attrs->name);
 				unset($block->attrs->id);
 				unset($block->attrs->data);
 				
-				$block->attrs = (object) array_merge((array) $block->attrs, get_fields($id));
+				$block->attrs = (object) array_merge((array) $block->attrs, get_fields());
+
+				acf_reset_meta($identifier);
 			}
 			
 			if(!empty($block->innerBlocks) && is_array($block->innerBlocks)) {
